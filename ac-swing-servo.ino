@@ -421,6 +421,7 @@ namespace SerialProgram {
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
+  pinMode(A3, INPUT); //Float this pin, hardware layout this pin is bridged to pin 11
 
   myservo.attach(SERVO_PIN);
 
