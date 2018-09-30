@@ -335,12 +335,12 @@ namespace Remote {
 
       switch (code) {
 
-        case ELGIN_AUTO:
-          if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
-            ServoProgram::park();
-            Led::flash(1500, 250); //-_-_-_
-          }
-          break;
+        // case ELGIN_AUTO:
+        //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+        //     ServoProgram::park();
+        //     Led::flash(1500, 250); //-_-_-_
+        //   }
+        //   break;
 
         case ELGIN_ALTA:
           if (ServoProgram::mode != ServoProgram::MODE_SWING) { //seek if not swinging
@@ -377,8 +377,14 @@ namespace Remote {
 
             case ELGIN_AUTO:
               preventRepeat = true; //only trigger once
+              if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+                ServoProgram::park();
+                Led::flash(1500, 250); //-_-_-_
+              }
+              else {
               ServoProgram::swing();
               Led::blink(10000);
+              }
               break;
 
             case ELGIN_MEDIA:
