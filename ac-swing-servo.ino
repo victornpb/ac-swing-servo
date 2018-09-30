@@ -41,6 +41,7 @@ unsigned int flashingInterval = 50;
 unsigned long flashingTimeout;
 
   void blink(unsigned int d) {
+    flashing = false;
     enabled = true;
     duration = d;
     ledBlinkTimeout = millis();
@@ -68,11 +69,12 @@ unsigned long flashingTimeout;
 
   void routine(unsigned long currentMillis)
   {
-    if (true)
+    if (enabled)
     {
       if (currentMillis - ledBlinkTimeout > duration)
       {
         enabled = false;
+        flashing = false;
         digitalWrite(pin, LOW);
       }
 
@@ -256,7 +258,7 @@ void seekRoutine(unsigned long currentMillis) {
   }
   else {
     park();
-    Led::blink(100);
+    // Led::blink(100);
   }
 }
 
@@ -356,18 +358,31 @@ byte processRemote(){
             case ELGIN_AUTO:
                 // action = Action_Swing;
                 // actionTimestamp = currentMillis;
+                 if(ServoProgram::mode==ServoProgram::MODE_SWING){
+                    ServoProgram::park();
+                    Led::flash(1500, 250); //-_-_-_
+                 }
+
                 break;
 
                 case ELGIN_ALTA:
-                // action = Action_Swing;
-                // actionTimestamp = currentMillis;
-                  ServoProgram::seek(ServoProgram::angle-5);
+                
+                if(ServoProgram::mode!=ServoProgram::MODE_SWING){
+
+                  if(ServoProgram::angle>ServoProgram::ANGLE_MIN){
+                    ServoProgram::seek(ServoProgram::angle-5);
+                    Led::blink(500);
+                  }
+                }
                 break;
 
                 case ELGIN_BAIXA:
-                // action = Action_Swing;
-                // actionTimestamp = currentMillis;
-                  ServoProgram::seek(ServoProgram::angle+5);
+                 if(ServoProgram::mode!=ServoProgram::MODE_SWING){
+                  if(ServoProgram::angle<ServoProgram::ANGLE_MAX){
+                    ServoProgram::seek(ServoProgram::angle+5);
+                    Led::blink(500);
+                  }
+                 }
                 break;
 
             case REPEAT:
@@ -389,9 +404,17 @@ byte processRemote(){
                         Serial.print(lastCode);
                         Serial.println();
 
-                        Led::flash(3000, 100);
 
-                        action = Action_Swing;
+
+                        // if(ServoProgram::mode==ServoProgram::MODE_SWING){
+                        //   ServoProgram::park();
+                        //   Led::flash(1000, 100);
+                        // }
+                        // else{
+                          ServoProgram::swing();
+                          Led::blink(10000);
+                        // }
+
                       break;
 
                       case ELGIN_MEDIA:
@@ -401,7 +424,10 @@ byte processRemote(){
                         Serial.print(lastCode);
                         Serial.println();
 
-                        Led::flash(2000, 200);
+                        ServoProgram::seek(155);
+
+                        // Led::flash(2000, 200);
+                        Led::blink(3000);
 
                         // action = Action_Swing;
                       break;
@@ -458,23 +484,6 @@ void loop() {
   }
 
   byte action = processRemote();
-    
-    switch(action){
-      
-        case Action_Swing:
-            if(ServoProgram::mode==ServoProgram::MODE_SWING)
-              ServoProgram::park();
-            else ServoProgram::swing();
-        break;
-
-        case Action_VoldownAction:
-            //decrease volume
-        break;
-        
-        case Action_MuteAction:
-            //mute or unmute
-        break;
-    }
 
   unsigned long m = millis();
 
