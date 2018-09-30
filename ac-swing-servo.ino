@@ -9,12 +9,12 @@ const uint8_t RECV_PIN = 11;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
 
+const uint8_t LED_PIN = 13;
 
 
 /** Led 13 blink on known command received */
 namespace Led {
 
-  const uint8_t pin = 13;
   unsigned int duration = 50; //hold for x ms
 
   bool state;
@@ -31,17 +31,17 @@ namespace Led {
     enabled = true;
     duration = d;
     ledBlinkTimeout = millis();
-    digitalWrite(pin, HIGH);
+    digitalWrite(LED_PIN, HIGH);
   }
 
   void on() {
     state = true;
-    digitalWrite(pin, HIGH);
+    digitalWrite(LED_PIN, HIGH);
   }
 
   void off() {
     state = false;
-    digitalWrite(pin, LOW);
+    digitalWrite(LED_PIN, LOW);
   }
 
   void flash(unsigned int d, unsigned int i) {
@@ -58,13 +58,13 @@ namespace Led {
       if (currentMillis - ledBlinkTimeout > duration) {
         enabled = false;
         flashing = false;
-        digitalWrite(pin, LOW);
+        digitalWrite(LED_PIN, LOW);
       }
 
       if (flashing && ((currentMillis - flashingTimeout) > flashingInterval)) {
         flashingTimeout = currentMillis;
         state = !state;
-        digitalWrite(pin, state);
+        digitalWrite(LED_PIN, state);
       }
     }
   }
@@ -420,9 +420,7 @@ namespace SerialProgram {
 
 
 void setup() {
-  // put your setup code here, to run once:
-
-  pinMode(13, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
 
   myservo.attach(SERVO_PIN);
 
