@@ -1,0 +1,6 @@
+{
+    "port": "/dev/cu.SLAB_USBtoUART",
+    "board": "arduino:avr:pro",
+    "configuration": "cpu=16MHzatmega328",
+    "sketch": "ac-swing-servo.ino"
+}

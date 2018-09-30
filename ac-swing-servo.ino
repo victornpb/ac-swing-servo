@@ -1,30 +1,92 @@
+#include <Arduino.h>
 #include <Servo.h>
 Servo myservo;
 
+#include <IRremote.h>
+const uint8_t RECV_PIN = 11;
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+
+
 const uint8_t SERVO_PIN = 9;
 
+enum ELGIN {
+  ELGIN_AUTO = 0x1FE6996,
+  ELGIN_ALTA = 0x1FE9966,
+  ELGIN_MEDIA = 0x1FED926,
+  ELGIN_BAIXA = 0x1FE59A6,
+  ELGIN_UP = 0x1FE29D6,
+  ELGIN_DOWN = 0x1FEA956,
+  ELGIN_FUNCAO = 0x1FEB946,
+  ELGIN_TIMER = 0x1FE7986,
+  ELGIN_DORMIR = 0x1FEF906,
+  ELGIN_POWER = 0x1FE39C6,
+};
+
+
+
 /** Led 13 blink on known command received */
-namespace LedBlink {
+namespace Led {
 
 const uint8_t pin = 13;
-const unsigned int duration = 50; //hold for x ms
+unsigned int duration = 50; //hold for x ms
 
+bool state;
 bool enabled;
-static unsigned long ledBlinkTimeout;
+unsigned long ledBlinkTimeout;
 
-void on() {
-  enabled = true;
-  ledBlinkTimeout = millis();
-  digitalWrite(pin, HIGH);
-}
+bool flashing = false;
 
-void routine(unsigned long currentMillis) {
-  if (enabled) {
-    if (currentMillis - ledBlinkTimeout > duration) {
-      enabled = false;
-      digitalWrite(pin, LOW);
-    }
+unsigned int flashingInterval = 50;
+unsigned long flashingTimeout;
+
+  void blink(unsigned int d) {
+    enabled = true;
+    duration = d;
+    ledBlinkTimeout = millis();
+    digitalWrite(pin, HIGH);
   }
+  
+  void on(){
+    state = true;
+    digitalWrite(pin, HIGH);
+  }
+
+  void off(){
+    state = false;
+    digitalWrite(pin, LOW);
+  }
+
+  void flash(unsigned int d, unsigned int i){
+    enabled = true;
+    duration = d;
+    flashingInterval = i;
+    flashing = true;
+    state = true;
+    ledBlinkTimeout = millis();
+  }
+
+  void routine(unsigned long currentMillis)
+  {
+    if (true)
+    {
+      if (currentMillis - ledBlinkTimeout > duration)
+      {
+        enabled = false;
+        digitalWrite(pin, LOW);
+      }
+
+      if (flashing && ((currentMillis - flashingTimeout) > flashingInterval))
+      {
+        flashingTimeout = currentMillis;
+        state = !state;
+        digitalWrite(pin, state);
+      }
+    }
+
+ 
+
+
 }
 
 }
@@ -194,7 +256,7 @@ void seekRoutine(unsigned long currentMillis) {
   }
   else {
     park();
-    LedBlink::on();
+    Led::blink(100);
   }
 }
 
@@ -250,6 +312,117 @@ void routine(unsigned long currentMillis) {
 
 }
 
+
+enum Actions{
+  Action_NoAction,
+  Action_Swing,
+  Action_VoldownAction,
+  Action_MuteAction,
+};
+
+const int RepeatTimeout = 300; //ms
+
+byte processRemote(){
+    
+    byte action = Action_NoAction;
+    
+    
+    static unsigned long previousMillis;
+
+    static unsigned long lastCode;
+    static unsigned long lastCodeMillis;
+
+    static bool preventRepeat = false;
+
+    if(irrecv.decode(&results)) {
+        unsigned long currentMillis = millis();
+
+        unsigned long code = results.value;
+        if(code!=0xFFFFFFFF){
+          lastCode = code;
+          lastCodeMillis = currentMillis;
+          preventRepeat = false; //this is a new code
+        }
+        else { //repeat
+          // code = lastCode;
+        }
+
+        // Serial.print(F("\nCODE:"));
+        // Serial.print(code, HEX);
+        
+        
+        switch(code){
+            
+            case ELGIN_AUTO:
+                // action = Action_Swing;
+                // actionTimestamp = currentMillis;
+                break;
+
+                case ELGIN_ALTA:
+                // action = Action_Swing;
+                // actionTimestamp = currentMillis;
+                  ServoProgram::seek(ServoProgram::angle-5);
+                break;
+
+                case ELGIN_BAIXA:
+                // action = Action_Swing;
+                // actionTimestamp = currentMillis;
+                  ServoProgram::seek(ServoProgram::angle+5);
+                break;
+
+            case REPEAT:
+                // if(currentMillis - previousMillis < RepeatTimeout){
+                //     if(lastAction == Action_Swing || lastAction == Action_VoldownAction){ //only enable repeat for this actions
+                //         action = lastAction;
+                //     }
+                // }
+
+                unsigned int holdTime = currentMillis - lastCodeMillis;
+                if (holdTime > 600 && preventRepeat==false) { //after holding for this long
+
+
+                  switch(lastCode){
+                    case ELGIN_AUTO:
+                        preventRepeat = true; //only trigger once
+
+                        Serial.print("HOLD ");
+                        Serial.print(lastCode);
+                        Serial.println();
+
+                        Led::flash(3000, 100);
+
+                        action = Action_Swing;
+                      break;
+
+                      case ELGIN_MEDIA:
+                        preventRepeat = true; //only trigger once
+
+                        Serial.print("HOLD ");
+                        Serial.print(lastCode);
+                        Serial.println();
+
+                        Led::flash(2000, 200);
+
+                        // action = Action_Swing;
+                      break;
+                    }
+                    
+                }
+                break;
+        }
+
+        irrecv.resume();
+
+ 
+        
+        // if(action != Action_NoAction) Led::blink(100);
+    }
+
+    return action;
+}
+
+
+
 void setup() {
   // put your setup code here, to run once:
 
@@ -263,6 +436,8 @@ void setup() {
 
   Serial.begin(9600);
   Serial.println("\nBOOT");
+
+    irrecv.enableIRIn();
 }
 
 void loop() {
@@ -282,10 +457,29 @@ void loop() {
     }
   }
 
+  byte action = processRemote();
+    
+    switch(action){
+      
+        case Action_Swing:
+            if(ServoProgram::mode==ServoProgram::MODE_SWING)
+              ServoProgram::park();
+            else ServoProgram::swing();
+        break;
+
+        case Action_VoldownAction:
+            //decrease volume
+        break;
+        
+        case Action_MuteAction:
+            //mute or unmute
+        break;
+    }
+
   unsigned long m = millis();
 
   ServoProgram::routine(m);
-  LedBlink::routine(m);
+  Led::routine(m);
 }
 
 
