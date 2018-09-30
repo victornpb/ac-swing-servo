@@ -75,7 +75,7 @@ namespace Led {
 
 namespace ServoProgram {
 
-  const uint8_t ANGLE_MIN = 90;
+  const uint8_t ANGLE_MIN = 107;
   const uint8_t ANGLE_MAX = 180;
 
   uint8_t angle = ANGLE_MIN; //current angle
