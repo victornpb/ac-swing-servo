@@ -26,6 +26,8 @@ namespace Led {
   unsigned int flashingInterval = 50;
   unsigned long flashingTimeout;
 
+  
+
   void blink(unsigned int d) {
     flashing = false;
     enabled = true;
@@ -36,11 +38,15 @@ namespace Led {
 
   void on() {
     state = true;
+    enabled = true;
+    flashing = false;
     digitalWrite(LED_PIN, HIGH);
   }
 
   void off() {
     state = false;
+    flashing = false;
+    enabled = false;
     digitalWrite(LED_PIN, LOW);
   }
 
@@ -306,17 +312,108 @@ namespace Remote {
     ELGIN_POWER = 0x1FE39C6,
   };
 
-  const unsigned int HOLD_TIMEOUT = 500; //time for a button to be considered as holding
+  const unsigned int LONGPRESS_DURATION = 500; //time for a button to be considered as holding
   const unsigned int REPEAT_THROTTLE = 300; //throttle for hold to repeat action
+
+
+
+  unsigned long previousMillis;
+
+  unsigned long lastCode;
+  unsigned long lastCodeMillis;
+
+  bool preventRepeat = false;
+
+  bool seekMode = false;
+  const int SEEK_MODE_DURATION = 5000;
+  unsigned long seekModeTimeout;
+
+  
+
+
+  void singlePress(unsigned long currentMillis, unsigned long code){
+    switch (code) {
+
+      // case ELGIN_AUTO:
+      //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+      //     ServoProgram::park();
+      //     Led::flash(1500, 250); //-_-_-_
+      //   }
+      //   break;
+
+      case ELGIN_ALTA:
+        if (seekMode) {
+          seekModeTimeout = currentMillis; //renew timeout
+          if (ServoProgram::angle > ServoProgram::ANGLE_MIN) {
+            ServoProgram::seek(ServoProgram::angle - 5);
+            // Led::blink(500);
+          }
+        }
+        break;
+
+      case ELGIN_BAIXA:
+        if (seekMode) {
+          seekModeTimeout = currentMillis; //renew timeout
+          if (ServoProgram::angle < ServoProgram::ANGLE_MAX) {
+            ServoProgram::seek(ServoProgram::angle + 5);
+            // Led::blink(500);
+          }
+        }
+        break;
+
+        case ELGIN_MEDIA:
+          if (seekMode) { //stop seekmode
+            seekMode = false;
+            ServoProgram::park();
+            Led::flash(1000, 50);
+          }
+          break;
+    }
+  }
+
+  void longPress(unsigned long currentMillis, unsigned long code){
+    preventRepeat = true;
+
+    switch (code) { // long press actions
+
+      case ELGIN_AUTO:
+        // preventRepeat = true; //only trigger once
+        if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+          ServoProgram::park();
+          Led::flash(1500, 250); //-_-_-_
+        }
+        else {
+          ServoProgram::swing();
+          Led::blink(10000);
+        }
+        break;
+
+      case ELGIN_MEDIA:
+        // preventRepeat = true; //only trigger once
+        if(!seekMode){
+          seekMode = true;
+          seekModeTimeout = currentMillis;
+
+          ServoProgram::seek(155); //center
+          Led::flash(SEEK_MODE_DURATION, 50);
+        }
+        break;
+
+        default:
+          preventRepeat = false;
+        }
+  }
+
+  void repeatPress(unsigned long currentMillis, unsigned long code){
+  }
 
   void routine(unsigned long currentMillis) {
 
-    static unsigned long previousMillis;
-
-    static unsigned long lastCode;
-    static unsigned long lastCodeMillis;
-
-    static bool preventRepeat = false;
+    if(seekMode && currentMillis-seekModeTimeout>SEEK_MODE_DURATION){
+      seekMode = false;
+      ServoProgram::park();
+      Led::flash(1000, 50);
+    }
 
     if (irrecv.decode(&results)) {
       unsigned long code = results.value;
@@ -324,6 +421,7 @@ namespace Remote {
       // Serial.print("\nCODE:");
       // Serial.print(code, HEX);
 
+      // handle NEC REPEAT CODE
       if (code != REPEAT) {
         lastCode = code;
         lastCodeMillis = currentMillis;
@@ -333,73 +431,25 @@ namespace Remote {
         // code = lastCode;
       }
 
-      switch (code) {
-
-        // case ELGIN_AUTO:
-        //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
-        //     ServoProgram::park();
-        //     Led::flash(1500, 250); //-_-_-_
-        //   }
-        //   break;
-
-        case ELGIN_ALTA:
-          if (ServoProgram::mode != ServoProgram::MODE_SWING) { //seek if not swinging
-            if (ServoProgram::angle > ServoProgram::ANGLE_MIN) {
-              ServoProgram::seek(ServoProgram::angle - 5);
-              Led::blink(500);
-            }
-          }
-          break;
-
-        case ELGIN_BAIXA:
-          if (ServoProgram::mode != ServoProgram::MODE_SWING) { //seek if not swinging
-            if (ServoProgram::angle < ServoProgram::ANGLE_MAX) {
-              ServoProgram::seek(ServoProgram::angle + 5);
-              Led::blink(500);
-            }
-          }
-          break;
-
-        case REPEAT:
-
-          // if(currentMillis - previousMillis < REPEAT_THROTTLE){
-          //   switch (lastCode) { // "hold to repeat" actions
-          //     case ELGIN_AUTO:
-          //     previousMillis = currentMillis;
-          //     //do something
-          //     break;
-          //   }
-          // }
-  
-          unsigned int holdTime = currentMillis - lastCodeMillis;
-          if (preventRepeat == false && holdTime > HOLD_TIMEOUT) { //after holding for this long
-            switch (lastCode) { //"press and hold" actions
-
-            case ELGIN_AUTO:
-              preventRepeat = true; //only trigger once
-              if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
-                ServoProgram::park();
-                Led::flash(1500, 250); //-_-_-_
-              }
-              else {
-              ServoProgram::swing();
-              Led::blink(10000);
-              }
-              break;
-
-            case ELGIN_MEDIA:
-              preventRepeat = true; //only trigger once
-              ServoProgram::seek(155); //center
-              Led::blink(3000);
-              break;
-            }
-          }
-          break;
+     if(code!=REPEAT){
+        singlePress(currentMillis, code);
+     }
+     else {
+        if(currentMillis - previousMillis < REPEAT_THROTTLE){
+          repeatPress(currentMillis, lastCode);
+          // previousMillis = currentMillis;
+        }
+        unsigned int holdTime = currentMillis - lastCodeMillis;
+        if (preventRepeat == false && holdTime > LONGPRESS_DURATION) {
+          longPress(currentMillis, lastCode);
+        }
       }
 
       irrecv.resume();
     }
   }
+  
+
 }
 
 
