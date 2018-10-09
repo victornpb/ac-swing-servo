@@ -442,7 +442,7 @@ namespace Remote {
     if(seekMode && currentMillis-seekModeTimeout>SEEK_MODE_DURATION){
       seekMode = false;
       ServoProgram::park();
-      Led::flash(1000, 50);
+      Led::flash(1500, 250); //_-_-_-
     }
 
     if (irrecv.decode(&results)) {
