@@ -417,7 +417,7 @@ namespace Remote {
           seekMode = true;
           seekModeTimeout = currentMillis;
 
-          ServoProgram::seek(155); //center
+          // ServoProgram::seek(155); //center
           Led::flash(SEEK_MODE_DURATION, 50);
         }
         break;
