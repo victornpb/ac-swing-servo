@@ -106,8 +106,9 @@ namespace ServoProgram {
 
   const uint8_t ANGLE_MIN = 107;
   const uint8_t ANGLE_MAX = 180;
+  const uint8_t ANGLE_INITIAL = ANGLE_MIN + ((ANGLE_MAX - ANGLE_MIN) / 2); //middle
 
-  uint8_t angle = ANGLE_MIN; //current angle
+  uint8_t angle = ANGLE_INITIAL; //current angle
   unsigned long startedMillis; //used for delays
 
   uint8_t stepSize;
@@ -537,6 +538,9 @@ void setup() {
   
   Serial.begin(9600);
   Serial.print("\nBOOT\n");
+
+  Led::blink(500);
+  ServoProgram::park();
 }
 
 void loop() {
