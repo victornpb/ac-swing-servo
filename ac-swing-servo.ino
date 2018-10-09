@@ -486,18 +486,31 @@ namespace Remote {
 namespace SerialProgram {
 
   void routine(unsigned long currentMillis){
-    if (Serial.available() > 0) {
-      char c = Serial.read();
-      switch(c){
-        case 's': //send "s" to swing
-        ServoProgram::swing();
-        break;
-        case 'a': //send "a90" to seek to 90 degrees 
-          int a = Serial.parseInt();
-          ServoProgram::seek(a);
-          break;
-      }
-    }
+    // if (Serial.available() > 0) {
+    //   char c = Serial.read();
+    //       int a = Serial.parseInt();
+    //   switch(c){
+    //     case '1': //send "s" to swing
+    //       ServoProgram::swing();
+    //       break;
+    //     case '2': //send "a90" to seek to 90 degrees 
+    //       ServoProgram::seek(a);
+    //       break;
+
+    //     case 'w':
+    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
+    //       break;
+    //     case 's':
+    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
+    //       break;
+    //     case 'x':
+    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
+    //       break;
+    //     case 'e':
+    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
+    //       break;
+    //   }
+    // }
   }
 
 }
