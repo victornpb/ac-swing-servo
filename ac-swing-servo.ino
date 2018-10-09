@@ -356,6 +356,12 @@ namespace Remote {
   void singlePress(unsigned long currentMillis, unsigned long code){
     switch (code) {
 
+      case ELGIN_POWER: //when turning ac on/off always stop
+        seekMode = false;
+        Led::off();
+        ServoProgram::park();
+        break;
+
       // case ELGIN_AUTO:
       //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
       //     ServoProgram::park();
