@@ -374,7 +374,7 @@ namespace Remote {
           seekModeTimeout = currentMillis; //renew timeout
           if (ServoProgram::angle > ServoProgram::ANGLE_MIN) {
             ServoProgram::seek(ServoProgram::angle - 5);
-            // Led::blink(500);
+            Led::blink(SEEK_MODE_DURATION);
           }
         }
         break;
@@ -384,7 +384,7 @@ namespace Remote {
           seekModeTimeout = currentMillis; //renew timeout
           if (ServoProgram::angle < ServoProgram::ANGLE_MAX) {
             ServoProgram::seek(ServoProgram::angle + 5);
-            // Led::blink(500);
+            Led::blink(SEEK_MODE_DURATION);
           }
         }
         break;
