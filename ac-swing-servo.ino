@@ -15,63 +15,86 @@ const uint8_t LED_PIN = 13;
 /** Led 13 blink on known command received */
 namespace Led {
 
-  unsigned int duration = 50; //hold for x ms
+  enum LED_MODE {
+    LED_IDLE,
+    LED_OFF,
+    LED_ON,
+    LED_BLINK,
+    LED_FLASH,
+  };
 
   bool state;
-  bool enabled;
-  unsigned long ledBlinkTimeout;
+  uint8_t mode;
 
-  bool flashing = false;
+  unsigned long millisStart; 
+  unsigned int ledOnDuration; //automatically goes LED_OFF after x ms
 
-  unsigned int flashingInterval = 50;
-  unsigned long flashingTimeout;
-
-  
-
-  void blink(unsigned int d) {
-    flashing = false;
-    enabled = true;
-    duration = d;
-    ledBlinkTimeout = millis();
-    digitalWrite(LED_PIN, HIGH);
-  }
+  unsigned long flashingCycleStart;
+  unsigned int flashingInterval;
 
   void on() {
-    state = true;
-    enabled = true;
-    flashing = false;
-    digitalWrite(LED_PIN, HIGH);
+    mode = LED_ON;
+    // state = HIGH;
+    // digitalWrite(LED_PIN, HIGH);
   }
 
   void off() {
-    state = false;
-    flashing = false;
-    enabled = false;
-    digitalWrite(LED_PIN, LOW);
+    mode = LED_OFF;
+    // state = LOW;
+    // digitalWrite(LED_PIN, LOW);
   }
 
-  void flash(unsigned int d, unsigned int i) {
-    enabled = true;
-    duration = d;
-    flashingInterval = i;
-    flashing = true;
-    state = true;
-    ledBlinkTimeout = millis();
+  void blink(unsigned int duration) {
+    mode = LED_BLINK;
+    ledOnDuration = duration;
+    millisStart = millis();
+    state = HIGH;
+    digitalWrite(LED_PIN, state);
+  }
+
+  void flash(unsigned int duration, unsigned int interval) {
+    mode = LED_FLASH;
+    ledOnDuration = duration;
+    flashingInterval = interval;
+    flashingCycleStart = millisStart = millis();
+    state = HIGH;
+    digitalWrite(LED_PIN, state);
   }
 
   void routine(unsigned long currentMillis) {
-    if (enabled) {
-      if (currentMillis - ledBlinkTimeout > duration) {
-        enabled = false;
-        flashing = false;
-        digitalWrite(LED_PIN, LOW);
+    switch(mode){
+      case LED_IDLE:
+        //noop
+      break;
+      case LED_OFF:
+        mode = LED_IDLE;
+        state = LOW;
+        digitalWrite(LED_PIN, state);
+        break;
+      case LED_ON:
+        mode = LED_IDLE;
+        state = HIGH;
+        digitalWrite(LED_PIN, state);
+        break;
+      case LED_BLINK: 
+        if (currentMillis - millisStart > ledOnDuration) {
+          mode = LED_IDLE;
+          state = LOW;
+          digitalWrite(LED_PIN, state);
       }
-
-      if (flashing && ((currentMillis - flashingTimeout) > flashingInterval)) {
-        flashingTimeout = currentMillis;
+        break;
+      case LED_FLASH:
+        if  ((currentMillis - flashingCycleStart) > flashingInterval) {
+          flashingCycleStart = currentMillis;
         state = !state;
         digitalWrite(LED_PIN, state);
       }
+        if (currentMillis - millisStart > ledOnDuration) {
+          state = LOW;
+          digitalWrite(LED_PIN, state);
+          mode = LED_IDLE;
+        }
+        break;
     }
   }
 
