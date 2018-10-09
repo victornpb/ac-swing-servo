@@ -339,7 +339,6 @@ namespace Remote {
   const unsigned int REPEAT_THROTTLE = 300; //throttle for hold to repeat action
 
 
-
   unsigned long previousMillis;
 
   unsigned long lastCode;
@@ -348,8 +347,8 @@ namespace Remote {
   bool preventRepeat = false;
 
   bool seekMode = false;
-  const int SEEK_MODE_DURATION = 5000;
-  unsigned long seekModeTimeout;
+  const unsigned int SEEK_MODE_DURATION = 10000;
+  unsigned long seekModeStart;
 
   
 
