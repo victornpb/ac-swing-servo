@@ -81,14 +81,14 @@ namespace Led {
           mode = LED_IDLE;
           state = LOW;
           digitalWrite(LED_PIN, state);
-      }
+        }
         break;
       case LED_FLASH:
         if  ((currentMillis - flashingCycleStart) > flashingInterval) {
           flashingCycleStart = currentMillis;
-        state = !state;
-        digitalWrite(LED_PIN, state);
-      }
+          state = !state;
+          digitalWrite(LED_PIN, state);
+        }
         if (currentMillis - millisStart > ledOnDuration) {
           state = LOW;
           digitalWrite(LED_PIN, state);
@@ -362,12 +362,12 @@ namespace Remote {
         ServoProgram::park();
         break;
 
-      // case ELGIN_AUTO:
-      //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
-      //     ServoProgram::park();
-      //     Led::flash(1500, 250); //-_-_-_
-      //   }
-      //   break;
+        // case ELGIN_AUTO:
+        //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+        //     ServoProgram::park();
+        //     Led::flash(1500, 250); //-_-_-_
+        //   }
+        //   break;
 
       case ELGIN_ALTA:
         if (seekMode) {
