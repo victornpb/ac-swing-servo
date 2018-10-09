@@ -421,10 +421,11 @@ namespace Remote {
         // preventRepeat = true; //only trigger once
         if(!seekMode){
           seekMode = true;
-          seekModeTimeout = currentMillis;
+          seekModeStart = currentMillis;
 
           // ServoProgram::seek(155); //center
-          Led::flash(SEEK_MODE_DURATION, 50);
+          ServoProgram::park();
+          Led::blink(SEEK_MODE_DURATION);
         }
         break;
 
