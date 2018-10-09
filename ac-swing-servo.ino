@@ -405,6 +405,7 @@ namespace Remote {
     switch (code) { // long press actions
 
       case ELGIN_AUTO:
+        seekMode = false;
         // preventRepeat = true; //only trigger once
         if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
           ServoProgram::park();
