@@ -486,31 +486,41 @@ namespace Remote {
 namespace SerialProgram {
 
   void routine(unsigned long currentMillis){
-    // if (Serial.available() > 0) {
-    //   char c = Serial.read();
-    //       int a = Serial.parseInt();
-    //   switch(c){
-    //     case '1': //send "s" to swing
-    //       ServoProgram::swing();
-    //       break;
-    //     case '2': //send "a90" to seek to 90 degrees 
-    //       ServoProgram::seek(a);
-    //       break;
+    if (Serial.available() > 0) {
+      char c = Serial.read();
+          int a = Serial.parseInt();
+      switch(c){
+        case 's': //swing
+          ServoProgram::swing();
+          break;
+        case 'a': //seek to a angle (e.g. "a90")
+          ServoProgram::seek(a);
+          break;
 
-    //     case 'w':
-    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
-    //       break;
-    //     case 's':
-    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
-    //       break;
-    //     case 'x':
-    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
-    //       break;
-    //     case 'e':
-    //       Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
-    //       break;
-    //   }
-    // }
+        // simulated remote
+        case 't': //single press Power
+          Remote::singlePress(currentMillis, Remote::ELGIN_POWER);
+          break;
+        case 'q': //single press AUTO
+          Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
+          break;
+        case 'Q': //long press AUTO
+          Remote::longPress(currentMillis, Remote::ELGIN_AUTO);
+          break;
+        case 'w': //single press ALTA
+          Remote::singlePress(currentMillis, Remote::ELGIN_ALTA);
+          break;
+        case 'e': //single press MEDIA
+          Remote::singlePress(currentMillis, Remote::ELGIN_MEDIA);
+          break;
+        case 'E': //long press MEDIA
+          Remote::longPress(currentMillis, Remote::ELGIN_MEDIA);
+          break;
+        case 'r': //single press BAIXA
+          Remote::singlePress(currentMillis, Remote::ELGIN_BAIXA);
+          break;
+      }
+    }
   }
 
 }
