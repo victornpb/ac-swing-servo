@@ -371,7 +371,7 @@ namespace Remote {
 
       case ELGIN_ALTA:
         if (seekMode) {
-          seekModeTimeout = currentMillis; //renew timeout
+          seekModeStart = currentMillis; //renew timeout
           if (ServoProgram::angle > ServoProgram::ANGLE_MIN) {
             ServoProgram::seek(ServoProgram::angle - 5);
             Led::blink(SEEK_MODE_DURATION);
@@ -381,7 +381,7 @@ namespace Remote {
 
       case ELGIN_BAIXA:
         if (seekMode) {
-          seekModeTimeout = currentMillis; //renew timeout
+          seekModeStart = currentMillis; //renew timeout
           if (ServoProgram::angle < ServoProgram::ANGLE_MAX) {
             ServoProgram::seek(ServoProgram::angle + 5);
             Led::blink(SEEK_MODE_DURATION);
@@ -391,9 +391,7 @@ namespace Remote {
 
         case ELGIN_MEDIA:
           if (seekMode) { //stop seekmode
-            seekMode = false;
-            ServoProgram::park();
-            Led::flash(1000, 50);
+            seekModeStart = currentMillis - SEEK_MODE_DURATION; //force expire
           }
           break;
     }
@@ -439,7 +437,8 @@ namespace Remote {
 
   void routine(unsigned long currentMillis) {
 
-    if(seekMode && currentMillis-seekModeTimeout>SEEK_MODE_DURATION){
+    //timeout seekMode
+    if(seekMode && currentMillis-seekModeStart>SEEK_MODE_DURATION){
       seekMode = false;
       ServoProgram::park();
       Led::flash(1500, 250); //_-_-_-
