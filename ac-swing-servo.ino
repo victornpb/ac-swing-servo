@@ -511,10 +511,8 @@ void setup() {
 }
 
 void loop() {
-  unsigned long m = millis();
-
-  SerialProgram::routine(m);
-  Remote::routine(m);
-  ServoProgram::routine(m);
-  Led::routine(m);
+  SerialProgram::routine(millis());
+  Remote::routine(millis());
+  ServoProgram::routine(millis());
+  Led::routine(millis());
 }
