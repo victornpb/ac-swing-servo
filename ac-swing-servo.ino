@@ -57,7 +57,7 @@ namespace Led {
     ledOnDuration = duration;
     flashingInterval = interval;
     flashingCycleStart = millisStart = millis();
-    state = HIGH;
+    state = LOW;
     digitalWrite(LED_PIN, state);
   }
 
