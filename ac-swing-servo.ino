@@ -108,6 +108,9 @@ namespace ServoProgram {
   const uint8_t ANGLE_MAX = 180;
   const uint8_t ANGLE_INITIAL = ANGLE_MIN + ((ANGLE_MAX - ANGLE_MIN) / 2); //middle
 
+  const uint8_t SWING_ANGLE_MIN = ANGLE_MIN;
+  const uint8_t SWING_ANGLE_MAX = ANGLE_MAX - 25; //reduce down swing
+
   uint8_t angle = ANGLE_INITIAL; //current angle
   unsigned long startedMillis; //used for delays
 
@@ -118,7 +121,7 @@ namespace ServoProgram {
 
   uint8_t seekTargetAngle = ANGLE_MAX;
 
-  const unsigned int IDLE_TIMEOUT = 3000;
+  const unsigned int IDLE_TIMEOUT = 3000; //turn servo off after idling for this long
 
   enum modes {
     MODE_OFF,
@@ -165,7 +168,7 @@ namespace ServoProgram {
     myservo.attach(SERVO_PIN);
 
     stepSize = 1;
-    stepDelay = 111; //roughtly 10s from min to max
+    stepDelay = 151; //roughtly 7s from min to max ((SWING_ANGLE_MIN - SWING_ANGLE_MAX) / stepSize * stepDelay)
     mode = MODE_SWING;
   }
 
@@ -185,6 +188,7 @@ namespace ServoProgram {
     }
   }
 
+  //the park routine wiggles the serve over and under the desired angle in order to settle accurately 
   void parkRoutine(unsigned long currentMillis) {
     if (currentMillis - startedMillis > stepDelay) {
       startedMillis = currentMillis;
@@ -232,10 +236,10 @@ namespace ServoProgram {
         return;
       }
 
+      myservo.write(a);
+
       Serial.print(' ');
       Serial.print(a);
-
-      myservo.write(a);
     }
   }
 
@@ -259,11 +263,10 @@ namespace ServoProgram {
         if (angle <= ANGLE_MIN) seekTargetAngle = angle = ANGLE_MIN;
         else if (angle >= ANGLE_MAX) seekTargetAngle = angle = ANGLE_MAX;
 
+        myservo.write(angle);
 
         Serial.print(' ');
         Serial.print(angle);
-
-        myservo.write(angle);
       }
     }
     else {
@@ -282,18 +285,18 @@ namespace ServoProgram {
       else angle -= stepSize;
 
       //constrain
-      if (angle <= ANGLE_MIN) angle = ANGLE_MIN;
-      else if (angle >= ANGLE_MAX) angle = ANGLE_MAX;
+      if (angle <= SWING_ANGLE_MIN) angle = SWING_ANGLE_MIN;
+      else if (angle >= SWING_ANGLE_MAX) angle = SWING_ANGLE_MAX;
 
       //if reached a stable point, make it oscilate
-      if (angle == ANGLE_MIN) seekTargetAngle = ANGLE_MAX;
-      else if (angle == ANGLE_MAX) seekTargetAngle = ANGLE_MIN;
-      else if (angle == seekTargetAngle) seekTargetAngle = ANGLE_MAX;
+      if (angle == SWING_ANGLE_MIN) seekTargetAngle = SWING_ANGLE_MAX;
+      else if (angle == SWING_ANGLE_MAX) seekTargetAngle = SWING_ANGLE_MIN;
+      else if (angle == seekTargetAngle) seekTargetAngle = SWING_ANGLE_MAX;
+
+      myservo.write(angle);
 
       Serial.print(' ');
       Serial.print(angle);
-
-      myservo.write(angle);
     }
   }
 
