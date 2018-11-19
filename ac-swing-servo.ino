@@ -362,8 +362,13 @@ namespace Remote {
 
       case ELGIN_POWER: //when turning ac on/off always stop
         seekMode = false;
-        Led::off();
+        Led::blink(250);
+        if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+          ServoProgram::seek(ServoProgram::ANGLE_INITIAL);
+        }
+        else{
         ServoProgram::park();
+        }
         break;
 
         // case ELGIN_AUTO:
