@@ -367,7 +367,7 @@ namespace Remote {
           ServoProgram::seek(ServoProgram::ANGLE_INITIAL);
         }
         else{
-        ServoProgram::park();
+          ServoProgram::park();
         }
         break;
 
@@ -499,15 +499,8 @@ namespace SerialProgram {
       char c = Serial.read();
           int a = Serial.parseInt();
       switch(c){
-        case 's': //swing
-          ServoProgram::swing();
-          break;
-        case 'a': //seek to a angle (e.g. "a90")
-          ServoProgram::seek(a);
-          break;
-
         // simulated remote
-        case 't': //single press Power
+        case 't': //single press POWER
           Remote::singlePress(currentMillis, Remote::ELGIN_POWER);
           break;
         case 'q': //single press AUTO
@@ -528,6 +521,15 @@ namespace SerialProgram {
         case 'r': //single press BAIXA
           Remote::singlePress(currentMillis, Remote::ELGIN_BAIXA);
           break;
+
+        // debug
+        case 's': //swing
+          ServoProgram::swing();
+          break;
+        case 'a': //seek to a angle (e.g. "a90")
+          ServoProgram::seek(a);
+          break;
+
       }
     }
   }
@@ -540,15 +542,24 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   pinMode(A3, INPUT); //Float this pin, hardware layout this pin is bridged to pin 11
 
-  myservo.attach(SERVO_PIN);
-
-  irrecv.enableIRIn();
-  
   Serial.begin(9600);
   Serial.print("\nBOOT\n");
 
+  irrecv.enableIRIn();
+
+  myservo.attach(SERVO_PIN);
+
   Led::blink(500);
+
+  //Home servo
+  myservo.write(ServoProgram::ANGLE_MAX);
+  delay(500);
+  myservo.write(ServoProgram::ANGLE_MIN);
+  delay(1000);
+
+  ServoProgram::seek(ServoProgram::ANGLE_INITIAL);
   ServoProgram::park();
+
 }
 
 void loop() {
