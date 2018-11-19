@@ -104,9 +104,9 @@ namespace Led {
 
 namespace ServoProgram {
 
-  const uint8_t ANGLE_MIN = 107;
+  const uint8_t ANGLE_MIN = 100;
   const uint8_t ANGLE_MAX = 180;
-  const uint8_t ANGLE_INITIAL = ANGLE_MIN + ((ANGLE_MAX - ANGLE_MIN) / 2); //middle
+  const uint8_t ANGLE_INITIAL = ANGLE_MIN + ((ANGLE_MAX - ANGLE_MIN) / 2) + 10; //middle
 
   const uint8_t SWING_ANGLE_MIN = ANGLE_MIN;
   const uint8_t SWING_ANGLE_MAX = ANGLE_MAX - 25; //reduce down swing
