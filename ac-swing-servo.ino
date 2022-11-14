@@ -1,5 +1,8 @@
 #include <Arduino.h>
 
+const uint8_t LED_PIN = 13;
+const uint8_t SENSOR_PIN = A2; // ADC used to sense if the AC unit is currently ON or OFF
+
 #include <Servo.h>
 Servo myservo;
 const uint8_t SERVO_PIN = 9;
@@ -9,8 +12,18 @@ const uint8_t RECV_PIN = 11;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
 
-const uint8_t LED_PIN = 13;
 
+namespace MainProg{
+  void startup();
+  void powerOn();
+  void powerOff();
+  void swing();
+  void seek();
+  void exitSeek();
+  void enterSeek();
+  void up();
+  void down();
+}
 
 /** Led 13 blink on known command received */
 namespace Led {
@@ -104,12 +117,12 @@ namespace Led {
 
 namespace ServoProgram {
 
-  const uint8_t ANGLE_MIN = 100;
-  const uint8_t ANGLE_MAX = 180;
-  const uint8_t ANGLE_INITIAL = ANGLE_MIN + ((ANGLE_MAX - ANGLE_MIN) / 2) + 10; //middle
+  const uint8_t ANGLE_MIN = 75;
+  const uint8_t ANGLE_MAX = 170;
+  const uint8_t ANGLE_INITIAL = 142; //ANGLE_MIN + ((ANGLE_MAX - ANGLE_MIN) / 2) + 20; //middle
 
   const uint8_t SWING_ANGLE_MIN = ANGLE_MIN;
-  const uint8_t SWING_ANGLE_MAX = ANGLE_MAX - 25; //reduce down swing
+  const uint8_t SWING_ANGLE_MAX = ANGLE_MAX - 10; //reduce down swing
 
   uint8_t angle = ANGLE_INITIAL; //current angle
   unsigned long startedMillis; //used for delays
@@ -134,22 +147,23 @@ namespace ServoProgram {
   uint8_t mode = MODE_IDLE;
 
   void off() {
-    Serial.print("\nOFF");
+    Serial.print("\nServo:OFF");
 
     mode = MODE_OFF;
     myservo.detach();
   }
 
   void idle() {
-    Serial.print("\nIDLE");
+    Serial.print("\nServo:IDLE");
 
     mode = MODE_IDLE;
     stepDelay = IDLE_TIMEOUT;
   }
 
   void seek(uint8_t a) {
-    Serial.print("\nSEEK:");
+    Serial.print("\nServo:SEEK (");
     Serial.print(a);
+    Serial.print(")");
 
     myservo.attach(SERVO_PIN);
 
@@ -164,7 +178,7 @@ namespace ServoProgram {
   }
 
   void swing() {
-    Serial.print("\nSWING");
+    Serial.print("\nServo:SWING");
     myservo.attach(SERVO_PIN);
 
     stepSize = 1;
@@ -173,12 +187,18 @@ namespace ServoProgram {
   }
 
   void park() {
-    Serial.print("\nPARK");
+    Serial.print("\nServo:PARK");
     parkStep = 0;
     stepDelay = 0;
     mode = MODE_PARK;
+    if (angle != seekTargetAngle) angle = seekTargetAngle;
   }
 
+
+  void center() {
+    Serial.print("\nServo:CENTER");
+    seek(ANGLE_INITIAL);  
+  }
 
 
   void idleRoutine(unsigned long currentMillis) {
@@ -197,31 +217,31 @@ namespace ServoProgram {
       parkStep++;
       if (parkStep == 0) {
         stepDelay = 30;
-        a -= 8;
+        a -= 4;
       }
       else if (parkStep == 1) {
         stepDelay = 30;
-        a += 7;
+        a += 4;
       }
       else if (parkStep == 2) {
         stepDelay = 30;
-        a -= 6;
+        a -= 3;
       }
       else if (parkStep == 3) {
         stepDelay = 30;
-        a += 5;
+        a += 3;
       }
       else if (parkStep == 4) {
         stepDelay = 30;
-        a -= 4;
+        a -= 2;
       }
       else if (parkStep == 5) {
         stepDelay = 30;
-        a += 3;
+        a += 2;
       }
       else if (parkStep == 6) {
         stepDelay = 30;
-        a -= 2;
+        a -= 1;
       }
       else if (parkStep == 7) {
         stepDelay = 30;
@@ -291,7 +311,7 @@ namespace ServoProgram {
       //if reached a stable point, make it oscilate
       if (angle == SWING_ANGLE_MIN) seekTargetAngle = SWING_ANGLE_MAX;
       else if (angle == SWING_ANGLE_MAX) seekTargetAngle = SWING_ANGLE_MIN;
-      else if (angle == seekTargetAngle) seekTargetAngle = SWING_ANGLE_MAX;
+      else if (angle == seekTargetAngle) seekTargetAngle = SWING_ANGLE_MIN;
 
       myservo.write(angle);
 
@@ -326,6 +346,8 @@ namespace ServoProgram {
 
 namespace Remote {
 
+  bool debugRemote = false;
+
   enum ELGIN_REMOTE {
     ELGIN_AUTO = 0x1FE6996,
     ELGIN_ALTA = 0x1FE9966,
@@ -338,10 +360,9 @@ namespace Remote {
     ELGIN_DORMIR = 0x1FEF906,
     ELGIN_POWER = 0x1FE39C6,
   };
-
+  
   const unsigned int LONGPRESS_DURATION = 500; //time for a button to be considered as holding
   const unsigned int REPEAT_THROTTLE = 300; //throttle for hold to repeat action
-
 
   unsigned long previousMillis;
 
@@ -349,60 +370,32 @@ namespace Remote {
   unsigned long lastCodeMillis;
 
   bool preventRepeat = false;
-
-  bool seekMode = false;
-  const unsigned int SEEK_MODE_DURATION = 10000;
-  unsigned long seekModeStart;
-
   
-
-
   void singlePress(unsigned long currentMillis, unsigned long code){
     switch (code) {
 
       case ELGIN_POWER: //when turning ac on/off always stop
-        seekMode = false;
-        Led::blink(250);
-        if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
-          ServoProgram::seek(ServoProgram::ANGLE_INITIAL);
-        }
-        else{
-          ServoProgram::park();
-        }
+          //MainProg::power();
         break;
 
-        // case ELGIN_AUTO:
+      case ELGIN_AUTO:
         //   if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
         //     ServoProgram::park();
         //     Led::flash(1500, 250); //-_-_-_
         //   }
-        //   break;
+        break;
 
       case ELGIN_ALTA:
-        if (seekMode) {
-          seekModeStart = currentMillis; //renew timeout
-          if (ServoProgram::angle > ServoProgram::ANGLE_MIN) {
-            ServoProgram::seek(ServoProgram::angle - 5);
-            Led::blink(SEEK_MODE_DURATION);
-          }
-        }
+        MainProg::up();
         break;
 
       case ELGIN_BAIXA:
-        if (seekMode) {
-          seekModeStart = currentMillis; //renew timeout
-          if (ServoProgram::angle < ServoProgram::ANGLE_MAX) {
-            ServoProgram::seek(ServoProgram::angle + 5);
-            Led::blink(SEEK_MODE_DURATION);
-          }
-        }
+        MainProg::down();
         break;
 
-        case ELGIN_MEDIA:
-          if (seekMode) { //stop seekmode
-            seekModeStart = currentMillis - SEEK_MODE_DURATION; //force expire
-          }
-          break;
+      case ELGIN_MEDIA:
+        MainProg::exitSeek();
+        break;
     }
   }
 
@@ -412,53 +405,39 @@ namespace Remote {
     switch (code) { // long press actions
 
       case ELGIN_AUTO:
-        seekMode = false;
-        // preventRepeat = true; //only trigger once
-        if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
-          ServoProgram::park();
-          Led::flash(1500, 250); //-_-_-_
-        }
-        else {
-          ServoProgram::swing();
-          Led::blink(10000);
-        }
+        MainProg::swing();
         break;
 
       case ELGIN_MEDIA:
-        // preventRepeat = true; //only trigger once
-        if(!seekMode){
-          seekMode = true;
-          seekModeStart = currentMillis;
-
-          // ServoProgram::seek(155); //center
-          ServoProgram::park();
-          Led::blink(SEEK_MODE_DURATION);
-        }
+        MainProg::enterSeek();
         break;
 
-        default:
-          preventRepeat = false;
-        }
+      default:
+        preventRepeat = false;
+      }
   }
 
-  void repeatPress(unsigned long currentMillis, unsigned long code){
+  void repeatPress(unsigned long currentMillis, unsigned long code) {
+    switch (code) {
+      case ELGIN_ALTA:
+        MainProg::up();
+        break;
+
+      case ELGIN_BAIXA:
+        MainProg::down();
+        break;
+    }
   }
 
   void routine(unsigned long currentMillis) {
-
-    //timeout seekMode
-    if(seekMode && currentMillis-seekModeStart>SEEK_MODE_DURATION){
-      seekMode = false;
-      ServoProgram::park();
-      Led::flash(1500, 250); //_-_-_-
-    }
-
     if (irrecv.decode(&results)) {
       unsigned long code = results.value;
 
-      // Serial.print("\nCODE:");
-      // Serial.print(code, HEX);
-
+      if (debugRemote){
+         Serial.print("\n(debug) IRCODE:");
+         Serial.print(code, HEX);
+      }
+      
       // handle NEC REPEAT CODE
       if (code != REPEAT) {
         lastCode = code;
@@ -469,13 +448,13 @@ namespace Remote {
         // code = lastCode;
       }
 
-     if(code!=REPEAT){
+     if (code != REPEAT){
         singlePress(currentMillis, code);
      }
      else {
-        if(currentMillis - previousMillis < REPEAT_THROTTLE){
+        if (currentMillis - previousMillis > REPEAT_THROTTLE){
+          previousMillis = currentMillis;
           repeatPress(currentMillis, lastCode);
-          // previousMillis = currentMillis;
         }
         unsigned int holdTime = currentMillis - lastCodeMillis;
         if (preventRepeat == false && holdTime > LONGPRESS_DURATION) {
@@ -486,50 +465,122 @@ namespace Remote {
       irrecv.resume();
     }
   }
-  
+}
 
+
+
+namespace Sensor {
+  bool debugSensor = false;
+  
+  const unsigned int poolingInterval = 100;
+  const unsigned int threshold = 950; // Fluctuates around OFF=900~800 ON=990~1010
+  uint8_t debounce = 10; // number of consecutive readings
+  
+  unsigned long previousMillis;
+  uint8_t newStateCount = 0;
+  bool state = false;
+
+  void onChange(bool state){
+    Serial.print("\n\n[MAIN BOARD] ");
+    Serial.println(state?"ON":"OFF");
+    
+    if (state==true) MainProg::powerOn();
+    else MainProg::powerOff();
+  }
+
+  void routine(unsigned long currentMillis) {
+    if (currentMillis - previousMillis > poolingInterval) {
+      previousMillis = currentMillis;
+
+      unsigned int value = analogRead(SENSOR_PIN);
+      bool s = value > threshold;
+
+      if (debugSensor) {
+        Serial.print("(Debug) Sensor:");
+        Serial.print(value);
+        Serial.print(" state:");
+        Serial.print(s?"ON":"OFF");
+        Serial.print(" reading:");
+        Serial.print(newStateCount);
+        Serial.println();
+      }
+      
+      if (s != state){ // detected edge
+        newStateCount++;
+
+        if (newStateCount > debounce) { // only flip state after x readings
+          state = s;
+          newStateCount = 0;
+           // dispatch state change
+          onChange(state);
+        }
+      }
+      else{
+        newStateCount = 0; // clear new state
+      }
+    }
+  }
+  
 }
 
 
 
 namespace SerialProgram {
 
-  void routine(unsigned long currentMillis){
+  void routine(unsigned long currentMillis) {
     if (Serial.available() > 0) {
       char c = Serial.read();
-          int a = Serial.parseInt();
-      switch(c){
-        // simulated remote
-        case 't': //single press POWER
-          Remote::singlePress(currentMillis, Remote::ELGIN_POWER);
+      int a = Serial.parseInt();
+      
+      switch(c) {
+        case 'r': 
+          MainProg::startup();
           break;
-        case 'q': //single press AUTO
-          Remote::singlePress(currentMillis, Remote::ELGIN_AUTO);
+        case '1': 
+          MainProg::powerOn();
           break;
-        case 'Q': //long press AUTO
-          Remote::longPress(currentMillis, Remote::ELGIN_AUTO);
+        case '0': 
+          MainProg::powerOff();
           break;
-        case 'w': //single press ALTA
-          Remote::singlePress(currentMillis, Remote::ELGIN_ALTA);
+        case 'q': 
+          MainProg::swing();
           break;
-        case 'e': //single press MEDIA
-          Remote::singlePress(currentMillis, Remote::ELGIN_MEDIA);
+        case 'e': 
+          MainProg::seek();
           break;
-        case 'E': //long press MEDIA
-          Remote::longPress(currentMillis, Remote::ELGIN_MEDIA);
+        case 'w': 
+          MainProg::up();
           break;
-        case 'r': //single press BAIXA
-          Remote::singlePress(currentMillis, Remote::ELGIN_BAIXA);
+        case 's': 
+          MainProg::down();
           break;
-
+        
         // debug
-        case 's': //swing
-          ServoProgram::swing();
-          break;
         case 'a': //seek to a angle (e.g. "a90")
           ServoProgram::seek(a);
           break;
+        case 'p': //debug sensor ADC
+          Sensor::debugSensor = !Sensor::debugSensor;
+          break;
+        case 'i': //debug remote IR codes
+          Remote::debugRemote = !Remote::debugRemote;
+          break;
 
+        case 'h': //help
+          Serial.println("\nHELP\n");
+          Serial.println("h  print help");
+          Serial.println("r  startup");
+          Serial.println("1  powerOn");
+          Serial.println("0  powerOff");
+          Serial.println("q  toggle Swing");
+          Serial.println("e  toggle Seek");
+          Serial.println("w  up");
+          Serial.println("s  down");
+          Serial.println("");
+          Serial.println("a  Seek to a angle (e.g. 'a90')");
+          Serial.println("p  Debug ADC Sensor");
+          Serial.println("i  Debug IR Remote Codes");
+          break;
       }
     }
   }
@@ -538,33 +589,155 @@ namespace SerialProgram {
 
 
 
+namespace MainProg {
+  bool isOn = false; // is AC on/off
+
+  bool seekMode = false;
+  const unsigned int SEEK_MODE_DURATION = 15000;
+  unsigned long seekModeStart;
+
+  uint8_t previousMode;
+  uint8_t previousAngle = 85;
+
+  void startup() {
+    Serial.print("> Startup sequence\n");
+    //Home servo
+    myservo.write(ServoProgram::ANGLE_MAX);
+    delay(500);
+    myservo.write(ServoProgram::ANGLE_MIN);
+    delay(1000);
+
+    ServoProgram::center();
+  }
+
+  void powerOn() {
+    //if (isOn) return;
+    isOn = true;
+    Serial.print("> Power ON\n");
+    Led::blink(5000);
+    
+    // restore previous state
+    if (previousMode == ServoProgram::MODE_SWING) {
+      ServoProgram::swing();
+    }
+    else {
+      ServoProgram::seek(previousAngle);
+    }
+  }
+
+  void powerOff(){
+    //if (!isOn) return;
+    isOn = false;
+    Serial.print("> Power OFF\n");
+    
+    // remember previous state
+    previousMode = ServoProgram::mode;
+    previousAngle = ServoProgram::angle;
+
+    // power off sequence
+    seekMode = false;
+    Led::blink(500);
+    ServoProgram::center();
+  }
+
+  void swing() {
+    seekMode = false;
+    // preventRepeat = true; //only trigger once
+    if (ServoProgram::mode == ServoProgram::MODE_SWING) { //stop swing
+      Serial.print("> Swing Stop\n");
+      ServoProgram::park();
+      Led::flash(1500, 250); //-_-_-_
+    }
+    else {
+      Serial.print("> Swing\n");
+      ServoProgram::swing();
+      Led::blink(10000);
+    }
+  }
+
+
+  void seek(){
+    if(seekMode) exitSeek();
+    else enterSeek();
+  }
+
+  void enterSeek(){
+    // preventRepeat = true; //only trigger once
+    if(!seekMode){
+      Serial.print("> Enter Seek\n");
+      seekMode = true;
+      seekModeStart = millis();
+
+      // ServoProgram::seek(155); //center
+      ServoProgram::park();
+      Led::blink(SEEK_MODE_DURATION);
+    }
+  }
+
+  void exitSeek(){
+    if (seekMode) { //stop seekmode
+      Serial.print("> Exit Seek\n");
+      seekModeStart = millis() - SEEK_MODE_DURATION; //force expire
+    }
+  }
+
+  void up(){
+    if (seekMode) {
+      Serial.print("> Up\n");
+      seekModeStart = millis(); //renew timeout
+      if (ServoProgram::angle > ServoProgram::ANGLE_MIN) {
+        ServoProgram::seek(ServoProgram::angle - 5);
+        Led::blink(SEEK_MODE_DURATION);
+      }
+    }
+  }
+
+  void down(){
+    if (seekMode) {
+      Serial.print("> Down\n");
+      seekModeStart = millis(); //renew timeout
+      if (ServoProgram::angle < ServoProgram::ANGLE_MAX) {
+        ServoProgram::seek(ServoProgram::angle + 5);
+        Led::blink(SEEK_MODE_DURATION);
+      }
+    }
+  }
+
+  void routine(unsigned long currentMillis) {
+    // timeout seekMode
+    if(seekMode && currentMillis-seekModeStart>SEEK_MODE_DURATION){
+      Serial.print("> Seek timeout\n");
+      seekMode = false;
+      ServoProgram::park();
+      Led::flash(1500, 250); //_-_-_-
+    }
+  }
+}
+
+
+
 void setup() {
   pinMode(LED_PIN, OUTPUT);
-  pinMode(A3, INPUT); //Float this pin, hardware layout this pin is bridged to pin 11
+  pinMode(SENSOR_PIN, INPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.print("\nBOOT\n");
-
-  irrecv.enableIRIn();
+  Serial.println("\nVictor N (c) 2018 - https://github.com/victornpb/ac-swing-servo \n");
 
   myservo.attach(SERVO_PIN);
 
   Led::blink(500);
 
-  //Home servo
-  myservo.write(ServoProgram::ANGLE_MAX);
-  delay(500);
-  myservo.write(ServoProgram::ANGLE_MIN);
-  delay(1000);
+  irrecv.enableIRIn();
 
-  ServoProgram::seek(ServoProgram::ANGLE_INITIAL);
-  ServoProgram::park();
-
+  MainProg::startup();
 }
 
 void loop() {
+  MainProg::routine(millis());
   SerialProgram::routine(millis());
   Remote::routine(millis());
   ServoProgram::routine(millis());
   Led::routine(millis());
+  Sensor::routine(millis());
 }
